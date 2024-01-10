@@ -1,0 +1,28 @@
+name: Software Composition Analysis Scanning
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  osv_scanner:
+    runs-on: ubuntu-latest
+    steps: 
+      - name: "Checkout source code"
+        uses: actions/checkout@v2
+        
+      - name: "Setup Go environment"
+        uses: actions/setup-go@v5.0.0
+        with:
+          go-version: '>=1.21'
+        
+      - name: "Install OSV Scanner"
+        run: |
+          go version
+          go install github.com/google/osv-scanner/cmd/osv-scanner@v1
+          
+      - name: "Run OSV Scanner"
+        run: |
+          osv-scanner -r .
