@@ -9,9 +9,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 )
 
@@ -76,10 +81,51 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(acc)
 		
 	if err == nil  {
+		token, err := generateJWT(acc.Username)
+		if err != nil {
+			http.Error(w, "Error generating JWT token", http.StatusInternalServerError)
+			return
+		}
+		
+		http.SetCookie(w, &http.Cookie{
+			Name:  "jwtToken",
+			Value: token,
+			HttpOnly: true,
+		})
 		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode(acc)
 	} else if err == sql.ErrNoRows{
 		http.Error(w, "Account does not exist / Invalid credentials", http.StatusInternalServerError)
 		return
 	} 
+}
+
+func generateJWT(username string) (string, error) {
+	pwd, _ := os.Getwd()
+	envDir := filepath.Dir(filepath.Dir(pwd))
+	envPath := filepath.Join(envDir, ".env")
+	err := godotenv.Load(envPath)
+	if err != nil {
+		log.Fatal("Error loading .env file.")
+	}
+	
+	secretKey := os.Getenv("SECRET_KEY")
+	if secretKey == "" {
+		log.Fatal("SECRET_KEY not found in .env file")
+	}
+	secretKeyBytes := []byte(secretKey)
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, 
+        jwt.MapClaims{ 
+			"username": username, 
+			"exp": time.Now().Add(time.Minute * 5).Unix(), 
+        })
+
+    tokenString, err := token.SignedString(secretKeyBytes)
+	fmt.Println("Token string: ", tokenString)
+    if err != nil {
+    	return "", err
+    }
+
+	return tokenString, nil
 }
