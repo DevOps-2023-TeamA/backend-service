@@ -31,6 +31,13 @@ type Accounts struct {
 	IsDeleted		bool 	`json:"IsDeleted"`
 }
 
+type Response struct {
+	ID       		int    	`json:"ID"`
+	Name     		string 	`json:"Name"`
+	Role			string 	`json:"Role"`
+	Token			string	`json:"Token"`
+}
+
 var connectionString	string
 
 func main() {
@@ -43,7 +50,7 @@ func main() {
 	
 	// CORS configuration
     corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://127.0.0.1:8080"}, // Your frontend origin
+		AllowedOrigins: []string{"http://127.0.0.1:5502"}, // Your frontend origin
         AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
         AllowedHeaders: []string{"Content-Type"},
     })
@@ -78,7 +85,6 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		&acc.ID, &acc.Name, 
 		&acc.Username, &acc.Password, 
 		&acc.Role, &acc.CreationDate, &acc.IsApproved, &acc.IsDeleted)
-	fmt.Println(acc)
 		
 	if err == nil  {
 		token, err := generateJWT(acc.Username)
@@ -91,11 +97,23 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			Name:  "jwtToken",
 			Value: token,
 			HttpOnly: true,
+			Secure: false,
+			SameSite: http.SameSiteNoneMode,
+			Domain: "127.0.0.1",
+			Path: "/",
+			MaxAge: 60*60*24*30,
 		})
+		
+		resData := Response{
+			ID: acc.ID,
+			Name: acc.Name,
+			Role: acc.Role,
+			Token: token,
+		}
 		w.WriteHeader(http.StatusAccepted)
-		json.NewEncoder(w).Encode(acc)
+		json.NewEncoder(w).Encode(resData)
 	} else if err == sql.ErrNoRows{
-		http.Error(w, "Account does not exist / Invalid credentials", http.StatusInternalServerError)
+		http.Error(w, "Account does not exist / Invalid credentials", http.StatusForbidden)
 		return
 	} 
 }
