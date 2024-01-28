@@ -101,6 +101,48 @@ func CreateRecord(w http.ResponseWriter, r *http.Request) {
 func ReadRecords(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to query all capstone entries")
+
+	acadYear := r.URL.Query().Get("ay")
+	title := r.URL.Query().Get("title")
+
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+	var result *sql.Rows
+	var err error
+
+	if acadYear == "" && title == "" {
+		fmt.Println("No queries")
+    	result, err = db.Query(`SELECT * FROM tsao_records WHERE IsDeleted=false`)
+	} else if acadYear == "" {
+		fmt.Println("No acadYear, have title")
+		result, err = db.Query(`SELECT * FROM tsao_records WHERE Title LIKE ? AND IsDeleted=false`, "%"+title+"%")
+		} else if title == "" {
+		fmt.Println("No title, have acadYear")
+    	result, err = db.Query(`SELECT * FROM tsao_records WHERE AcadYear=? AND IsDeleted=false`, acadYear)
+	} else {
+		fmt.Println("Have acadYear and title")
+		result, err = db.Query(`SELECT * FROM tsao_records WHERE AcadYear=? AND Title LIKE ? AND IsDeleted=false`, acadYear, "%"+title+"%")
+	}
+
+	var records []Records
+	for result.Next() {
+		var record Records
+		_ = result.Scan(
+			&record.ID, &record.AccountID, &record.ContactRole,
+			&record.StudentCount, &record.AcadYear, &record.Title,
+			&record.CompanyName, &record.CompanyPOC, &record.Description, &record.CreationDate, &record.IsDeleted,
+		)
+		records = append(records, record)
+	}
+
+	if err == nil  {
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(records)
+	} else if err := result.Err(); err != sql.ErrNoRows {
+		log.Println(err)
+		http.Error(w, "Error iterating over rows", http.StatusInternalServerError)
+		return
+	}
 }
 
 func UpdateRecord(w http.ResponseWriter, r *http.Request) {
