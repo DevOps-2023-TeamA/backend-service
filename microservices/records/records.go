@@ -175,6 +175,36 @@ func ReadRecord(w http.ResponseWriter, r *http.Request) {
 func UpdateRecord(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to update a capstone entry record")
+
+	recordID := mux.Vars(r)["id"]	
+	
+	var modifiedRecord Records
+	err := json.NewDecoder(r.Body).Decode(&modifiedRecord)
+	if err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+	
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+
+	result, err := db.Exec(
+		`UPDATE tsao_records
+		SET
+			AccountID=?, ContactRole=?, StudentCount=?, AcadYear=?, 
+			Title=?, CompanyName=?, CompanyPOC=?, Description=?
+		WHERE ID=?;`,
+		modifiedRecord.AccountID, modifiedRecord.ContactRole, modifiedRecord.StudentCount, modifiedRecord.AcadYear, 
+		modifiedRecord.Title, modifiedRecord.CompanyName, modifiedRecord.CompanyPOC, modifiedRecord.Description, recordID)
+	rowsAffected, _ := result.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		log.Println(err)
+		http.Error(w, "Record ID does not exist", http.StatusNotFound)
+		return
+	}  else {
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprintf(w, "Record information modified for ID: %s\n", recordID)
+	}
 }
 
 func DeleteRecord(w http.ResponseWriter, r *http.Request) {
