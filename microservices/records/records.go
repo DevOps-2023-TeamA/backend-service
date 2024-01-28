@@ -35,6 +35,7 @@ func main() {
     api := r.PathPrefix("/api/records").Subrouter()
     api.HandleFunc("", CreateRecord).Methods("POST")
     api.HandleFunc("", ReadRecords).Methods("GET")
+    api.HandleFunc("/{id}", ReadRecord).Methods("GET")
     api.HandleFunc("/{id}", UpdateRecord).Methods("PUT")
     api.HandleFunc("/{id}", DeleteRecord).Methods("DELETE")
     http.Handle("/", r)
@@ -130,8 +131,7 @@ func ReadRecords(w http.ResponseWriter, r *http.Request) {
 		_ = result.Scan(
 			&record.ID, &record.AccountID, &record.ContactRole,
 			&record.StudentCount, &record.AcadYear, &record.Title,
-			&record.CompanyName, &record.CompanyPOC, &record.Description, &record.CreationDate, &record.IsDeleted,
-		)
+			&record.CompanyName, &record.CompanyPOC, &record.Description, &record.CreationDate, &record.IsDeleted)
 		records = append(records, record)
 	}
 
@@ -142,6 +142,33 @@ func ReadRecords(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		http.Error(w, "Error iterating over rows", http.StatusInternalServerError)
 		return
+	}
+}
+
+func ReadRecord(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	log.Println("Entering endpoint to query single capstone entries")
+
+	recordID := mux.Vars(r)["id"]	
+
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+	
+	var record Records
+    err := db.QueryRow("SELECT * FROM tsao_records WHERE ID=?", recordID).Scan(
+		&record.ID, &record.AccountID, &record.ContactRole,
+			&record.StudentCount, &record.AcadYear, &record.Title,
+			&record.CompanyName, &record.CompanyPOC, &record.Description, &record.CreationDate, &record.IsDeleted)
+
+	if err == nil  {
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(record)
+	} else if err == sql.ErrNoRows{
+		http.Error(w, "Record does not exist", http.StatusNotFound)
+		return
+	} else {
+		log.Println(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
