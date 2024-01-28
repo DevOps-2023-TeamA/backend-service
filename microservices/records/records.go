@@ -210,4 +210,20 @@ func UpdateRecord(w http.ResponseWriter, r *http.Request) {
 func DeleteRecord(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to (soft) delete a capstone entry record")
+
+	recordID := mux.Vars(r)["id"]	
+	
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+	result, err := db.Exec(
+		`UPDATE tsao_records SET IsDeleted=true WHERE ID=? AND IsDeleted=false;`, recordID)
+	rowsAffected, _ := result.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		log.Println(err)
+		http.Error(w, "Unable to delete user", http.StatusNotFound)
+		return
+	} else {
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprintf(w, "User deleted for ID: %s\n", recordID)
+	}
 }
