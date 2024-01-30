@@ -149,6 +149,28 @@ func ReadAccounts(w http.ResponseWriter, r *http.Request) {
 func ReadAccount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to read an account's information")
+
+	accountID := mux.Vars(r)["id"]	
+
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+	
+	var account Accounts
+    err := db.QueryRow("SELECT * FROM tsao_accounts WHERE ID=?", accountID).Scan(
+		&account.ID, &account.Name,
+		&account.Username, &account.Password, &account.Role,
+		&account.CreationDate, &account.IsApproved, &account.IsDeleted)
+
+	if err == nil  {
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(account)
+	} else if err == sql.ErrNoRows{
+		http.Error(w, "Account does not exist", http.StatusNotFound)
+		return
+	} else {
+		log.Println(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
 }
 
 func UpdateAccount(w http.ResponseWriter, r *http.Request) {
