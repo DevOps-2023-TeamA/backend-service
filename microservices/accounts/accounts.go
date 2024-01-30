@@ -34,7 +34,9 @@ func main() {
     api := r.PathPrefix("/api/accounts").Subrouter()
     api.HandleFunc("", CreateAccount).Methods("POST")
     api.HandleFunc("", ReadAccounts).Methods("GET")
+    api.HandleFunc("/{id}", ReadAccount).Methods("GET")
     api.HandleFunc("/{id}", UpdateAccount).Methods("PUT")
+    api.HandleFunc("/{id}", ApproveAccount).Methods("PATCH")
     api.HandleFunc("/{id}", DeleteAccount).Methods("DELETE")
     http.Handle("/", r)
 
@@ -118,11 +120,45 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 func ReadAccounts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to query all accounts")
+
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+	
+    result, err := db.Query("SELECT * FROM tsao_accounts WHERE IsDeleted=false")
+	
+	var accounts []Accounts
+	for result.Next() {
+		var account Accounts
+		_ = result.Scan(
+			&account.ID, &account.Name,
+			&account.Username, &account.Password, &account.Role,
+			&account.CreationDate, &account.IsApproved, &account.IsDeleted)
+		accounts = append(accounts, account)
+	}
+
+	if err == nil  {
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(accounts)
+	} else if err := result.Err(); err != sql.ErrNoRows {
+		log.Println(err)
+		http.Error(w, "Error iterating over rows", http.StatusInternalServerError)
+		return
+	}
+}
+
+func ReadAccount(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	log.Println("Entering endpoint to read an account's information")
 }
 
 func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to update an account's information")
+}
+
+func ApproveAccount(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	log.Println("Entering endpoint to approve an account")
 }
 
 func DeleteAccount(w http.ResponseWriter, r *http.Request) {
