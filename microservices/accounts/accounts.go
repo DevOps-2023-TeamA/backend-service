@@ -222,6 +222,35 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 func ModifyPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to modify an account's password")
+
+	accountID := mux.Vars(r)["id"]	
+
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+
+	var newPassword string
+	err := json.NewDecoder(r.Body).Decode(&newPassword)
+	if err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+
+	sha := sha256.New()
+	sha.Write([]byte(newPassword))
+	newPassword = hex.EncodeToString(sha.Sum(nil))
+
+	result, err := db.Exec(
+		`UPDATE tsao_accounts SET Password=? WHERE ID=? AND IsDeleted=false;`,
+		newPassword, accountID)
+	rowsAffected, _ := result.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		log.Println(err)
+		http.Error(w, "Account ID does not exist", http.StatusNotFound)
+		return
+	}  else {
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprintf(w, "Account information modified for ID: %s\n", accountID)
+	}
 }
 
 func ApproveAccount(w http.ResponseWriter, r *http.Request) {
