@@ -278,6 +278,22 @@ func ApproveAccount(w http.ResponseWriter, r *http.Request) {
 func DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to (soft) delete an account")
+
+	accountID := mux.Vars(r)["id"]	
+	
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+	result, err := db.Exec(
+		`UPDATE tsao_accounts SET IsDeleted=true WHERE ID=? AND IsDeleted=false;`, accountID)
+	rowsAffected, _ := result.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		log.Println(err)
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return
+	} else {
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprintf(w, "Account deleted for ID: %s\n", accountID)
+	}
 }
 
 func checkInfo(db *sql.DB, username string) (int, string, error) {
