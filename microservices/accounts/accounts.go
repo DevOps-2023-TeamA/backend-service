@@ -249,13 +249,30 @@ func ModifyPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}  else {
 		w.WriteHeader(http.StatusAccepted)
-		fmt.Fprintf(w, "Account information modified for ID: %s\n", accountID)
+		fmt.Fprintf(w, "Password has been modified for ID: %s\n", accountID)
 	}
 }
 
 func ApproveAccount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to approve an account")
+
+	accountID := mux.Vars(r)["id"]	
+
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+
+	result, err := db.Exec(
+		`UPDATE tsao_accounts SET IsApproved=true WHERE ID=? AND IsDeleted=false;`, accountID)
+	rowsAffected, _ := result.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		log.Println(err)
+		http.Error(w, "Account already approved", http.StatusNotFound)
+		return
+	}  else {
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprintf(w, "Account approved for ID: %s\n", accountID)
+	}
 }
 
 func DeleteAccount(w http.ResponseWriter, r *http.Request) {
