@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -35,8 +36,9 @@ func main() {
     api.HandleFunc("", CreateAccount).Methods("POST")
     api.HandleFunc("", ReadAccounts).Methods("GET")
     api.HandleFunc("/{id}", ReadAccount).Methods("GET")
-    api.HandleFunc("/{id}", UpdateAccount).Methods("PUT")
-    api.HandleFunc("/{id}", ApproveAccount).Methods("PATCH")
+    api.HandleFunc("/{id}", UpdateAccount).Methods("PATCH")
+    api.HandleFunc("/modify-password/{id}", ModifyPassword).Methods("PATCH")
+    api.HandleFunc("/approve/{id}", ApproveAccount).Methods("PATCH")
     api.HandleFunc("/{id}", DeleteAccount).Methods("DELETE")
     http.Handle("/", r)
 
@@ -45,7 +47,7 @@ func main() {
 	// CORS configuration
     corsHandler := cors.New(cors.Options{
 		AllowedOrigins: []string{"http://127.0.0.1:5502"}, // Your frontend origin
-        AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
         AllowedHeaders: []string{"Content-Type"},
     })
 	
@@ -80,14 +82,14 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	db, _ := sql.Open("mysql", connectionString)
 	defer db.Close()
 
-	existingUsername, err := checkInfo(db, newAccount.Username)
+	_, existingUsername, err := checkInfo(db, newAccount.Username)
     if err != nil {
         log.Println(err)
         http.Error(w, "Error checking existing user", http.StatusInternalServerError)
         return
     }
 
-    if existingUsername != nil {
+    if existingUsername != "" {
         http.Error(w, "Username already exists", http.StatusConflict)
         return
     }
@@ -176,6 +178,50 @@ func ReadAccount(w http.ResponseWriter, r *http.Request) {
 func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to update an account's information")
+
+	accountID, _ := strconv.Atoi(mux.Vars(r)["id"])
+	
+	var modifiedAccount Accounts
+	err := json.NewDecoder(r.Body).Decode(&modifiedAccount)
+	if err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+	
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+
+	existingID, _, err := checkInfo(db, modifiedAccount.Username)
+    if err != nil {
+        log.Println(err)
+        http.Error(w, "Error checking existing user", http.StatusInternalServerError)
+        return
+    }
+
+    if existingID != accountID && existingID != 0 {
+        http.Error(w, "Username already exists", http.StatusConflict)
+        return
+    }
+
+	result, err := db.Exec(
+		`UPDATE tsao_accounts
+		SET Name=?, Username=?, Role=?
+		WHERE ID=? AND IsDeleted=false;`,
+		modifiedAccount.Name, modifiedAccount.Username, modifiedAccount.Role, accountID)
+	rowsAffected, _ := result.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		log.Println(err)
+		http.Error(w, "Account ID does not exist", http.StatusNotFound)
+		return
+	}  else {
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprintf(w, "Account information modified for ID: %d\n", accountID)
+	}
+}
+
+func ModifyPassword(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	log.Println("Entering endpoint to modify an account's password")
 }
 
 func ApproveAccount(w http.ResponseWriter, r *http.Request) {
@@ -188,18 +234,19 @@ func DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	log.Println("Entering endpoint to (soft) delete an account")
 }
 
-func checkInfo(db *sql.DB, username string) (*string, error) {
-    var retrievedUsername string
+func checkInfo(db *sql.DB, username string) (int, string, error) {
+    var retrievedID int
+	var retrievedUsername string
     err := db.QueryRow(`
-        SELECT Username FROM tsao_accounts
+        SELECT ID, Username FROM tsao_accounts
         WHERE Username=?;`, username).Scan(
-        &retrievedUsername)
+        &retrievedID, &retrievedUsername)
 
     if err != nil {
         if err == sql.ErrNoRows {
-            return nil, nil // No existing user found
+            return 0, "", nil // No existing user found
         }
-        return nil, err
+        return 0, "", err
     }
-    return &retrievedUsername, nil
+    return retrievedID, retrievedUsername, nil
 }
