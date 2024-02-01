@@ -31,6 +31,13 @@ type Accounts struct {
 	IsDeleted		bool 	`json:"IsDeleted"`
 }
 
+type Response struct {
+	ID       		int    	`json:"ID"`
+	Name     		string 	`json:"Name"`
+	Role			string 	`json:"Role"`
+	Token			string	`json:"Token"`
+}
+
 var connectionString	string
 
 func main() {
@@ -43,7 +50,7 @@ func main() {
 	
 	// CORS configuration
     corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://127.0.0.1:8080"}, // Your frontend origin
+		AllowedOrigins: []string{"http://127.0.0.1:5502"}, // Your frontend origin
         AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
         AllowedHeaders: []string{"Content-Type"},
     })
@@ -58,7 +65,7 @@ func main() {
 
 func Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
-	log.Println("Entering endpoint to add new user account")
+	log.Println("Entering endpoint to validate user credentials")
 	
 	var loginAcc Accounts
 	err := json.NewDecoder(r.Body).Decode(&loginAcc)
@@ -74,13 +81,18 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 	
 	var acc Accounts
-    err = db.QueryRow("SELECT * FROM tsao_accounts WHERE Username=? AND Password=? AND IsDeleted=0", loginAcc.Username, encyrptedPassword).Scan(
+    err = db.QueryRow("SELECT * FROM tsao_accounts WHERE Username=? AND Password=?", loginAcc.Username, encyrptedPassword).Scan(
 		&acc.ID, &acc.Name, 
 		&acc.Username, &acc.Password, 
 		&acc.Role, &acc.CreationDate, &acc.IsApproved, &acc.IsDeleted)
-	fmt.Println(acc)
 		
-	if err == nil  {
+	if acc.IsDeleted {
+		http.Error(w, "Account does not exist", http.StatusInternalServerError)
+		return
+	} else if err == sql.ErrNoRows{
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	} else if err == nil  {
 		token, err := generateJWT(acc.Username)
 		if err != nil {
 			http.Error(w, "Error generating JWT token", http.StatusInternalServerError)
@@ -91,13 +103,24 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			Name:  "jwtToken",
 			Value: token,
 			HttpOnly: true,
+			Secure: false,
+			SameSite: http.SameSiteNoneMode,
+			Domain: "127.0.0.1",
+			Path: "/",
+			MaxAge: 60*60*24*30,
 		})
+		
+		resData := Response{
+			ID: acc.ID,
+			Name: acc.Name,
+			Role: acc.Role,
+			Token: token,
+		}
 		w.WriteHeader(http.StatusAccepted)
-		json.NewEncoder(w).Encode(acc)
-	} else if err == sql.ErrNoRows{
-		http.Error(w, "Account does not exist / Invalid credentials", http.StatusInternalServerError)
-		return
-	} 
+		json.NewEncoder(w).Encode(resData)
+	} else {
+		http.Error(w, "Unexpected error occured", http.StatusNotFound)
+	}
 }
 
 func generateJWT(username string) (string, error) {
