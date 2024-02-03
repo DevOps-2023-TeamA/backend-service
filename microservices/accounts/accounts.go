@@ -11,9 +11,3 @@ type Accounts struct {
 	IsDeleted		bool 	`json:"IsDeleted"`
 }
 
-type Response struct {
-	ID       		int    	`json:"ID"`
-	Name     		string 	`json:"Name"`
-	Role			string 	`json:"Role"`
-	Token			string	`json:"Token"`
-}
