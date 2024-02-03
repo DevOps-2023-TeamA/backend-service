@@ -40,6 +40,8 @@ jobs:
           path: sources/backend
       - name: "[Backend] Setup Go environment"
         uses: actions/setup-go@v5.0.0
+        with:
+          go-version: '1.21'
       - name: "[Backend] Set up .env file"
         env:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
