@@ -45,7 +45,7 @@ jobs:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           cd sources/backend
-          sh setup.sh $SECRET_KEY
+          echo "SECRET_KEY=$SECRET_KEY" > .env
           ls
         working-directory: ${{ github.workspace }}
       - name: "[Backend] Deploy Auth Microservice"
