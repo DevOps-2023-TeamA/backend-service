@@ -77,6 +77,7 @@ jobs:
         working-directory: ${{ github.workspace }}
       - name: "[REMOVE ME] Curl"
         run: |
+          sudo lsof -i :8001
           curl http://localhost:8001/api/records
       - name: "[Testing] Run Robot Framework Tests"
         run: |
