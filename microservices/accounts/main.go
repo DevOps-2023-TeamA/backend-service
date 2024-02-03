@@ -25,6 +25,7 @@ func main() {
     api.HandleFunc("", CreateAccount).Methods("POST")
     api.HandleFunc("", ReadAccounts).Methods("GET")
     api.HandleFunc("/{id}", ReadAccount).Methods("GET")
+    api.HandleFunc("/retrieve/{username}", IDFromUsername).Methods("GET")
     api.HandleFunc("/{id}", UpdateAccount).Methods("PATCH")
     api.HandleFunc("/modify-password/{id}", ModifyPassword).Methods("PATCH")
     api.HandleFunc("/approve/{id}", ApproveAccount).Methods("PATCH")
@@ -147,7 +148,7 @@ func ReadAccount(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 	
 	var account Accounts
-    err := db.QueryRow("SELECT * FROM tsao_accounts WHERE ID=?", accountID).Scan(
+    err := db.QueryRow("SELECT * FROM tsao_accounts WHERE ID=? AND IsApproved=true AND IsDeleted=false", accountID).Scan(
 		&account.ID, &account.Name,
 		&account.Username, &account.Password, &account.Role,
 		&account.CreationDate, &account.IsApproved, &account.IsDeleted)
@@ -157,6 +158,30 @@ func ReadAccount(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(account)
 	} else if err == sql.ErrNoRows{
 		http.Error(w, "Account does not exist", http.StatusNotFound)
+		return
+	} else {
+		log.Println(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func IDFromUsername(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	log.Println("Entering endpoint to retrieve Account ID from Username")
+
+	username := mux.Vars(r)["username"]	
+
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+	
+    var accountID int
+    err := db.QueryRow("SELECT ID FROM tsao_accounts WHERE Username=? AND IsApproved=true AND IsDeleted=false", username).Scan(&accountID)
+
+	if err == nil  {
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(accountID)
+	} else if err == sql.ErrNoRows{
+		http.Error(w, "Account has not been approved OR Account has been deleted", http.StatusNotFound)
 		return
 	} else {
 		log.Println(err)
