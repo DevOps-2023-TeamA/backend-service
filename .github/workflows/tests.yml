@@ -1,0 +1,91 @@
+name: Robot Framework Tests
+
+on:
+  push:
+    branches: [ "main", "actions/**" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  sql_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up directories
+        run: |
+          mkdir tests sources sources/backend sources/db
+      - name: "[Database] Checkout code"
+        run: |
+          git clone https://github.com/DevOps-2023-TeamA/tsao-db.git sources/db
+        working-directory: ${{ github.workspace }}
+      - name: "[Database] Setup MySQL"
+        uses: mirromutth/mysql-action@v1.1
+        with:
+          host port: 3306
+          container port: 3306
+          mysql root password: root
+          mysql database: user
+          mysql user: root 
+          mysql password: root
+      - name: "[Database] Wait for MySQL"
+        run: sleep 10
+      - name: "[Database] Create Tables"
+        run: |
+          mysql --protocol=TCP -h localhost -P 3306 --user=root --password=root user < sources/db/create_table.sql
+      - name: "[Database] Insert Sample Data"
+        run: |
+          mysql --protocol=TCP -h localhost -P 3306 --user=root --password=root user < sources/db/insert_data.sql
+      - name: "[Backend] Checkout code"
+        uses: actions/checkout@v2
+        with:
+          path: sources/backend
+      - name: "[Backend] Setup Go environment"
+        uses: actions/setup-go@v5.0.0
+      - name: "[Backend] Set up .env file"
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        run: |
+          cd sources/backend
+          sh setup.sh $SECRET_KEY
+          ls
+        working-directory: ${{ github.workspace }}
+      - name: "[Backend] Deploy Auth Microservice"
+        run: |
+          cd sources/backend
+          go run microservices/auth/auth.go -sql "root:root@protocol@tcp(127.0.0.1:3306)/tsao" &
+        working-directory: ${{ github.workspace }}
+      - name: "[Backend] Deploy Users Microservice"
+        run: |
+          cd sources/backend
+          go run microservices/users/users.go -sql "root:root@protocol@tcp(127.0.0.1:3306)/tsao" &
+        working-directory: ${{ github.workspace }}
+      - name: "[Backend] Deploy Records Microservice"
+        run: |
+          cd sources/backend
+          go run microservices/records/records.go -sql "root:root@protocol@tcp(127.0.0.1:3306)/tsao" &
+        working-directory: ${{ github.workspace }}
+      - name: "[Testing] Retrieve tests"
+        run: |
+          git clone https://github.com/DevOps-2023-TeamA/tsao-tests.git tests/alltests
+          cp -r tests/alltests/backend/* tests
+        working-directory: ${{ github.workspace }}
+      - name: "[Testing] Install Robot Framework and SeleniumLibrary"
+        run: |
+          pip install robotframework
+          pip install robotframework-requests
+        working-directory: ${{ github.workspace }}
+
+      - name: "[Testing] Run Robot Framework Tests"
+        run: |
+          for file in tests/*.robot; do
+            if [ -f "$file" ]; then
+              echo "Result of $file"
+              robot --outputdir results/ $file
+              echo "-----------------------------------"
+            fi
+          done
+        working-directory: ${{ github.workspace }}
+      - name: "[Testing] Upload Testing Artifacts"
+        uses: actions/upload-artifact@v2
+        with:
+          name: selenium-artifacts
+          path: results/
