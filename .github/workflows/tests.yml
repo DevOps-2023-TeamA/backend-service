@@ -73,7 +73,9 @@ jobs:
           pip install robotframework
           pip install robotframework-requests
         working-directory: ${{ github.workspace }}
-
+      - name: "[REMOVE ME] Curl"
+        run: |
+          curl http://localhost:8001/api/records
       - name: "[Testing] Run Robot Framework Tests"
         run: |
           for file in tests/*.robot; do
