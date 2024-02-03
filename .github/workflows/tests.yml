@@ -65,6 +65,8 @@ jobs:
           cd sources/backend
           go run microservices/records/*.go -sql "root:root@tcp(127.0.0.1:3306)/tsao" &
         working-directory: ${{ github.workspace }}
+      - name: "[Backend] Wait for Backend Setup"
+        run: sleep 5
       - name: "[Testing] Retrieve tests"
         run: |
           git clone https://github.com/DevOps-2023-TeamA/tsao-tests.git tests/alltests
