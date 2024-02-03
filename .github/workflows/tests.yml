@@ -51,17 +51,17 @@ jobs:
       - name: "[Backend] Deploy Auth Microservice"
         run: |
           cd sources/backend
-          go run microservices/auth/*.go -sql "root:root@protocol@tcp(127.0.0.1:3306)/tsao" &
+          go run microservices/auth/*.go -sql "root:root@tcp(127.0.0.1:3306)/tsao" &
         working-directory: ${{ github.workspace }}
       - name: "[Backend] Deploy Accounts Microservice"
         run: |
           cd sources/backend
-          go run microservices/accounts/*.go -sql "root:root@protocol@tcp(127.0.0.1:3306)/tsao" &
+          go run microservices/accounts/*.go -sql "root:root@tcp(127.0.0.1:3306)/tsao" &
         working-directory: ${{ github.workspace }}
       - name: "[Backend] Deploy Records Microservice"
         run: |
           cd sources/backend
-          go run microservices/records/*.go -sql "root:root@protocol@tcp(127.0.0.1:3306)/tsao" &
+          go run microservices/records/*.go -sql "root:root@tcp(127.0.0.1:3306)/tsao" &
         working-directory: ${{ github.workspace }}
       - name: "[Testing] Retrieve tests"
         run: |
