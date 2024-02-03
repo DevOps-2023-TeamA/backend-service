@@ -75,10 +75,11 @@ jobs:
           pip install robotframework
           pip install robotframework-requests
         working-directory: ${{ github.workspace }}
-      - name: "[REMOVE ME] Curl"
+      - name: "[Debug] Check contents of ports"
         run: |
+          sudo lsof -i :8000
           sudo lsof -i :8001
-          curl http://localhost:8001/api/records
+          sudo lsof -i :8002
       - name: "[Testing] Run Robot Framework Tests"
         run: |
           for file in tests/*.robot; do
@@ -90,6 +91,7 @@ jobs:
           done
         working-directory: ${{ github.workspace }}
       - name: "[Testing] Upload Testing Artifacts"
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: selenium-artifacts
