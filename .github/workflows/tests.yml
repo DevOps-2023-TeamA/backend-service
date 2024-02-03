@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  sql_tests:
+  backend_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Set up directories
