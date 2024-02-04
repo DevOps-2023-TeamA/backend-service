@@ -103,7 +103,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.WriteHeader(http.StatusAccepted)
+		w.WriteHeader(http.StatusCreated)
 		w.Write(newAccountJson)
 	} else {
 		log.Println(err)
