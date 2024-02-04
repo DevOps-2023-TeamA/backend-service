@@ -59,30 +59,33 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 		return
 	}
+	
+	db, _ := sql.Open("mysql", connectionString)
+	defer db.Close()
+	
+	_, existingUsername, err := checkInfo(db, newAccount.Username)
+    if err != nil {
+		log.Println(err)
+        http.Error(w, "Error checking existing user", http.StatusInternalServerError)
+        return
+    }
+	
+    if existingUsername != "" {
+		http.Error(w, "Username already exists", http.StatusConflict)
+        return
+    }
+
 	sha := sha256.New()
 	sha.Write([]byte(newAccount.Password))
 	newAccount.Password = hex.EncodeToString(sha.Sum(nil))
+
+	newAccount.Role = "User"
 
 	location, _ := time.LoadLocation("Asia/Singapore")
 	newAccount.CreationDate = time.Now().In(location).Format("2006-01-02 15:04:05")
 
 	newAccount.IsApproved = false
 	newAccount.IsDeleted = false
-
-	db, _ := sql.Open("mysql", connectionString)
-	defer db.Close()
-
-	_, existingUsername, err := checkInfo(db, newAccount.Username)
-    if err != nil {
-        log.Println(err)
-        http.Error(w, "Error checking existing user", http.StatusInternalServerError)
-        return
-    }
-
-    if existingUsername != "" {
-        http.Error(w, "Username already exists", http.StatusConflict)
-        return
-    }
 
 	result, err := db.Exec(
 		`INSERT INTO tsao_accounts (Name, Username, Password, Role, CreationDate, IsApproved, IsDeleted)
