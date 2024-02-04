@@ -14,7 +14,7 @@ type Accounts struct {
 type Response struct {
 	ID       		int    	`json:"ID"`
 	Name     		string 	`json:"Name"`
-	Username      	string  `json:"Username"`
+	Username		string  `json:"Username"`
 	Role			string 	`json:"Role"`
 	Token			string	`json:"Token"`
 }
