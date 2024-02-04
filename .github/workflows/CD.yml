@@ -1,0 +1,26 @@
+name: Discord Notification
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    environment:
+      name: Configure Discord
+    steps:
+      - name: Discord Webhook Action
+        uses: tsickert/discord-webhook@v5.4.0
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          webhook-url: ${{ env.DISCORD_WEBHOOK_URL }}
+          content: "## <@&1203218591647010876> A new release for [tsao-backend-svc](https://github.com/DevOps-2023-TeamA/tsao-backend-svc) is now available."
+          username: "TSAO-BACKEND-SVC Releases"
+          embed-title: ${{ github.event.release.name }}
+          embed-description: |
+            ${{ github.event.release.body }}
+
+            ---
+            Download it [here](${{ github.event.release.html_url }}).
