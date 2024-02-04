@@ -23,6 +23,11 @@ username:password@tcp(127.0.0.1:3306)
 ```
 
 ## serving
+> [!note]
+> Make sure the database is set up and being served on port 3306.
+>
+> For setup instructions, refer to [tsao-db](https://github.com/DevOps-2023-TeamA/tsao-db).
+
 ### on macOS/linux
 ```bash
 # serve auth microservice
