@@ -95,6 +95,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		resData := Response{
 			ID: acc.ID,
 			Name: acc.Name,
+			Username: acc.Username,
 			Role: acc.Role,
 			Token: token,
 		}
