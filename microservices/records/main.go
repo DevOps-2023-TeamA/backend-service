@@ -76,7 +76,7 @@ func CreateRecord(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.WriteHeader(http.StatusAccepted)
+		w.WriteHeader(http.StatusCreated)
 		w.Write(newRecordsJson)
 	} else {
 		log.Println(err)
