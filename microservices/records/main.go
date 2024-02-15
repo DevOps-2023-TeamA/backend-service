@@ -14,32 +14,32 @@ import (
 	"github.com/rs/cors"
 )
 
-var connectionString	string
+var connectionString string
 
 func main() {
 	r := mux.NewRouter()
-    api := r.PathPrefix("/api/records").Subrouter()
-    api.HandleFunc("", CreateRecord).Methods("POST")
-    api.HandleFunc("", ReadRecords).Methods("GET")
-    api.HandleFunc("/{id}", ReadRecord).Methods("GET")
-    api.HandleFunc("/{id}", UpdateRecord).Methods("PUT")
-    api.HandleFunc("/{id}", DeleteRecord).Methods("DELETE")
-    http.Handle("/", r)
+	api := r.PathPrefix("/api/records").Subrouter()
+	api.HandleFunc("", CreateRecord).Methods("POST")
+	api.HandleFunc("", ReadRecords).Methods("GET")
+	api.HandleFunc("/{id}", ReadRecord).Methods("GET")
+	api.HandleFunc("/{id}", UpdateRecord).Methods("PUT")
+	api.HandleFunc("/{id}", DeleteRecord).Methods("DELETE")
+	http.Handle("/", r)
 
 	fmt.Println("Capstone Entries microservice running on http://localhost:8001/api/records")
-	
+
 	// CORS configuration
-    corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://127.0.0.1:5502", "https://tsao.hotchocolate.app"}, // Your frontend origin
-        AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-        AllowedHeaders: []string{"Content-Type"},
-    })
-		
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins: []string{"http://127.0.0.1:5502", "http://tsao.hotchocolate.app"}, // Your frontend origin
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type"},
+	})
+
 	cmd := flag.String("sql", "", "")
 	flag.Parse()
 	connectionString = string(*cmd)
-	
-    handler := corsHandler.Handler(r)
+
+	handler := corsHandler.Handler(r)
 	http.ListenAndServe(":8001", handler)
 }
 
@@ -65,10 +65,10 @@ func CreateRecord(w http.ResponseWriter, r *http.Request) {
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
 		newRecords.AccountID, newRecords.ContactRole, newRecords.StudentCount, newRecords.AcadYear,
 		newRecords.Title, newRecords.CompanyName, newRecords.CompanyPOC, newRecords.Description, newRecords.CreationDate, newRecords.IsDeleted)
-	if err == nil  {
+	if err == nil {
 		recordID, _ := result.LastInsertId()
 		newRecords.ID = int(recordID)
-		
+
 		newRecordsJson, _ := json.Marshal(newRecords)
 		if err != nil {
 			log.Println(err)
@@ -99,13 +99,13 @@ func ReadRecords(w http.ResponseWriter, r *http.Request) {
 
 	if acadYear == "" && title == "" {
 		fmt.Println("No queries")
-    	result, err = db.Query(`SELECT * FROM tsao_records WHERE IsDeleted=false`)
+		result, err = db.Query(`SELECT * FROM tsao_records WHERE IsDeleted=false`)
 	} else if acadYear == "" {
 		fmt.Println("No acadYear, have title")
 		result, err = db.Query(`SELECT * FROM tsao_records WHERE Title LIKE ? AND IsDeleted=false`, "%"+title+"%")
-		} else if title == "" {
+	} else if title == "" {
 		fmt.Println("No title, have acadYear")
-    	result, err = db.Query(`SELECT * FROM tsao_records WHERE AcadYear=? AND IsDeleted=false`, acadYear)
+		result, err = db.Query(`SELECT * FROM tsao_records WHERE AcadYear=? AND IsDeleted=false`, acadYear)
 	} else {
 		fmt.Println("Have acadYear and title")
 		result, err = db.Query(`SELECT * FROM tsao_records WHERE AcadYear=? AND Title LIKE ? AND IsDeleted=false`, acadYear, "%"+title+"%")
@@ -121,7 +121,7 @@ func ReadRecords(w http.ResponseWriter, r *http.Request) {
 		records = append(records, record)
 	}
 
-	if err == nil  {
+	if err == nil {
 		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode(records)
 	} else if err := result.Err(); err != sql.ErrNoRows {
@@ -135,21 +135,21 @@ func ReadRecord(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to query single capstone entries")
 
-	recordID := mux.Vars(r)["id"]	
+	recordID := mux.Vars(r)["id"]
 
 	db, _ := sql.Open("mysql", connectionString)
 	defer db.Close()
-	
-	var record Records
-    err := db.QueryRow("SELECT * FROM tsao_records WHERE ID=?", recordID).Scan(
-		&record.ID, &record.AccountID, &record.ContactRole,
-			&record.StudentCount, &record.AcadYear, &record.Title,
-			&record.CompanyName, &record.CompanyPOC, &record.Description, &record.CreationDate, &record.IsDeleted)
 
-	if err == nil  {
+	var record Records
+	err := db.QueryRow("SELECT * FROM tsao_records WHERE ID=?", recordID).Scan(
+		&record.ID, &record.AccountID, &record.ContactRole,
+		&record.StudentCount, &record.AcadYear, &record.Title,
+		&record.CompanyName, &record.CompanyPOC, &record.Description, &record.CreationDate, &record.IsDeleted)
+
+	if err == nil {
 		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode(record)
-	} else if err == sql.ErrNoRows{
+	} else if err == sql.ErrNoRows {
 		http.Error(w, "Record does not exist", http.StatusNotFound)
 		return
 	} else {
@@ -162,15 +162,15 @@ func UpdateRecord(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to update a capstone entry record")
 
-	recordID := mux.Vars(r)["id"]	
-	
+	recordID := mux.Vars(r)["id"]
+
 	var modifiedRecord Records
 	err := json.NewDecoder(r.Body).Decode(&modifiedRecord)
 	if err != nil {
 		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 		return
 	}
-	
+
 	db, _ := sql.Open("mysql", connectionString)
 	defer db.Close()
 
@@ -180,14 +180,14 @@ func UpdateRecord(w http.ResponseWriter, r *http.Request) {
 			AccountID=?, ContactRole=?, StudentCount=?, AcadYear=?, 
 			Title=?, CompanyName=?, CompanyPOC=?, Description=?
 		WHERE ID=?;`,
-		modifiedRecord.AccountID, modifiedRecord.ContactRole, modifiedRecord.StudentCount, modifiedRecord.AcadYear, 
+		modifiedRecord.AccountID, modifiedRecord.ContactRole, modifiedRecord.StudentCount, modifiedRecord.AcadYear,
 		modifiedRecord.Title, modifiedRecord.CompanyName, modifiedRecord.CompanyPOC, modifiedRecord.Description, recordID)
 	rowsAffected, _ := result.RowsAffected()
 	if err != nil || rowsAffected == 0 {
 		log.Println(err)
 		http.Error(w, "Record ID does not exist", http.StatusNotFound)
 		return
-	}  else {
+	} else {
 		w.WriteHeader(http.StatusAccepted)
 		fmt.Fprintf(w, "Record information modified for ID: %s\n", recordID)
 	}
@@ -197,8 +197,8 @@ func DeleteRecord(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	log.Println("Entering endpoint to (soft) delete a capstone entry record")
 
-	recordID := mux.Vars(r)["id"]	
-	
+	recordID := mux.Vars(r)["id"]
+
 	db, _ := sql.Open("mysql", connectionString)
 	defer db.Close()
 	result, err := db.Exec(
