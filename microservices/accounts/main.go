@@ -36,7 +36,7 @@ func main() {
 	
 	// CORS configuration
     corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://127.0.0.1:5502"}, // Your frontend origin
+		AllowedOrigins: []string{"http://127.0.0.1:5502", "https://tsao.hotchocolate.app"}, // Your frontend origin
         AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
         AllowedHeaders: []string{"Content-Type"},
     })
