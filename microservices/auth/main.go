@@ -32,7 +32,7 @@ func main() {
 	
 	// CORS configuration
     corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://127.0.0.1:5502", "https://tsao.hotchocolate.app"}, // Your frontend origin
+		AllowedOrigins: []string{"http://127.0.0.1:5502", "http://tsao.hotchocolate.app"}, // Your frontend origin
         AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
         AllowedHeaders: []string{"Content-Type"},
     })
@@ -87,8 +87,8 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			HttpOnly: true,
 			Secure: false,
 			SameSite: http.SameSiteNoneMode,
-			Domain: "127.0.0.1",
-			Path: "/",
+			Domain: "tsao.hotchocolate.app",
+			Path: "login.html",
 			MaxAge: 60*60*24*30,
 		})
 		
